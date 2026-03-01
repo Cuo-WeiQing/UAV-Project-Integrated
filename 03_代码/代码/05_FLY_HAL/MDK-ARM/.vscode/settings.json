@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "app_task.h": "c",
+        "com_debug.h": "c",
+        "inf_ip5305t.h": "c",
+        "com_config.h": "c",
+        "spi.h": "c",
+        "com_pid.h": "c",
+        "app_flight.h": "c"
+    }
+}
