@@ -3,6 +3,7 @@
 
 #include "stdint.h"
 #include "stdio.h"
+#include "Com_RemoteConfig.h"
 
 typedef enum
 {
@@ -28,18 +29,14 @@ typedef enum
 
 typedef struct
 {
-    int16_t THR; /* ÓÍÃÅ */
-    int16_t PIT; /* ¸©Ñö */
-    int16_t ROL; /* ºá¹ö */
-    int16_t YAW; /* Æ«º½ */
+    int16_t THR; /* ï¿½ï¿½ï¿½ï¿½ */
+    int16_t PIT; /* ï¿½ï¿½ï¿½ï¿½ */
+    int16_t ROL; /* ï¿½ï¿½ï¿½ */
+    int16_t YAW; /* Æ«ï¿½ï¿½ */
 
-    uint8_t isPowerDown; /* ÊÇ·ñ¹Ø»ú: 1:¹Ø»ú 0:²»¹Ø»ú */
-    uint8_t isFixHeight; /* ÊÇ·ñ·­×ª¶¨¸ßµÄ×´Ì¬ */
+    uint8_t isPowerDown; /* ï¿½Ç·ï¿½Ø»ï¿½: 1:ï¿½Ø»ï¿½ 0:ï¿½ï¿½ï¿½Ø»ï¿½ */
+    uint8_t isFixHeight; /* ï¿½Ç·ï¿½×ªï¿½ï¿½ï¿½ßµï¿½×´Ì¬ */
 } JoyStick_Struct;
-
-#define FRAME_0 (0x11)
-#define FRAME_1 (0x22)
-#define FRAME_2 (0x33)
 
 extern JoyStick_Struct joyStick;
 extern JoyStick_Struct joyStickBias;

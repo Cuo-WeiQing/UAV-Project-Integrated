@@ -7,24 +7,31 @@
 #define READ_LEFT_TOP HAL_GPIO_ReadPin(KEY_LEFT_TOP_GPIO_Port, KEY_LEFT_TOP_Pin)
 #define READ_RIGHT_TOP HAL_GPIO_ReadPin(KEY_RIGHT_TOP_GPIO_Port, KEY_RIGHT_TOP_Pin)
 
+/* 按键防抖与超时参数 */
+#define KEY_DEBOUNCE_MS         (30)    /* 软件防抖延时 (ms) */
+#define KEY_SHORT_PRESS_MAX     (5)     /* 短按最大时间单位 (x100ms) */
+#define KEY_LONG_PRESS_TIMEOUT  (12)    /* 长按超时检测单位 (x100ms) */
+#define KEY_RELEASE_TIMEOUT     (100)   /* 等待按键释放的超时次数 */
+
 static uint16_t buff[4] = {0};
+
 /**
- * @description: ҡ�˳�ʼ��
+ * @description: 摇杆初始化
  * @return {*}
  */
 void Inf_JoyStickAndKey_Init(void)
 {
-    debug_printfln("ҡ�˺Ͱ������ݵĳ�ʼ�� ��ʼ");
-    /* 1. ADCУ׼ */
+    debug_printfln("摇杆和按键数据的初始化 开始");
+    /* 1. ADC校准 */
     HAL_ADCEx_Calibration_Start(&hadc1);
 
-    /* 2. ����ADCת�� */
+    /* 2. 启动ADC转换 */
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)buff, 4);
-    debug_printfln("ҡ�˺Ͱ������ݵĳ�ʼ�� ����");
+    debug_printfln("摇杆和按键数据的初始化 结束");
 }
 
 /**
- * @description: ɨ��ҡ������
+ * @description: 扫描摇杆数据
  * @return {*}
  */
 void Inf_JoyStickAndKey_JoyStickScan(void)
@@ -36,8 +43,24 @@ void Inf_JoyStickAndKey_JoyStickScan(void)
 }
 
 /**
- * @description: ɨ�谴��
- * @return {*} ���µ��Ǹ�����
+ * @description: 等待按键释放 (带超时保护，防止卡键死循环)
+ * @param {GPIO_TypeDef*} port GPIO端口
+ * @param {uint16_t} pin GPIO引脚
+ * @return {*}
+ */
+static void Inf_JoyStickAndKey_WaitRelease(GPIO_TypeDef *port, uint16_t pin)
+{
+    uint16_t timeout = 0;
+    while (HAL_GPIO_ReadPin(port, pin) == 0 && timeout < KEY_RELEASE_TIMEOUT)
+    {
+        timeout++;
+        vTaskDelay(10);
+    }
+}
+
+/**
+ * @description: 扫描按键 (带软件防抖、长按检测、卡键超时保护)
+ * @return {*} 按下的那个按键
  */
 Com_Key Inf_JoyStickAndKey_KeyScan(void)
 {
@@ -48,55 +71,60 @@ Com_Key Inf_JoyStickAndKey_KeyScan(void)
        READ_LEFT_TOP == 0 ||
        READ_RIGHT_TOP == 0)
     {
-        vTaskDelay(30);
+        /* 软件防抖: 延时后再次确认按键状态 */
+        vTaskDelay(KEY_DEBOUNCE_MS);
+
         if(READ_LEFT == 0)
         {
-            while(READ_LEFT == 0);
+            Inf_JoyStickAndKey_WaitRelease(KEY_LEFT_GPIO_Port, KEY_LEFT_Pin);
             return KEY_LEFT;
         }
         else if(READ_RIGHT == 0)
         {
-            while(READ_RIGHT == 0);
+            Inf_JoyStickAndKey_WaitRelease(KEY_RIGHT_GPIO_Port, KEY_RIGHT_Pin);
             return KEY_RIGHT;
         }
         else if(READ_UP == 0)
         {
-            while(READ_UP == 0);
+            Inf_JoyStickAndKey_WaitRelease(KEY_UP_GPIO_Port, KEY_UP_Pin);
             return KEY_UP;
         }
         else if(READ_DOWN == 0)
         {
-            while(READ_DOWN == 0);
+            Inf_JoyStickAndKey_WaitRelease(KEY_DOWN_GPIO_Port, KEY_DOWN_Pin);
             return KEY_DOWN;
         }
         else if(READ_LEFT_TOP == 0)
         {
             uint16_t time = 0;
-            while(READ_LEFT_TOP == 0 && time < 12)
+            /* 长按检测: 每100ms检测一次, 最长1.2s */
+            while(READ_LEFT_TOP == 0 && time < KEY_LONG_PRESS_TIMEOUT)
             {
                 time++;
                 vTaskDelay(100);
             }
-            if(time <= 5)
+            if(time <= KEY_SHORT_PRESS_MAX)
             {
                 return KEY_LEFT_TOP;
             }
-            while(READ_LEFT_TOP == 0);
+            /* 长按: 等待释放后返回 */
+            Inf_JoyStickAndKey_WaitRelease(KEY_LEFT_TOP_GPIO_Port, KEY_LEFT_TOP_Pin);
             return KEY_LEFT_TOP_LONG;
         }
         else if(READ_RIGHT_TOP == 0)
         {
             uint16_t time = 0;
-            while(READ_RIGHT_TOP == 0 && time < 12)
+            while(READ_RIGHT_TOP == 0 && time < KEY_LONG_PRESS_TIMEOUT)
             {
                 time++;
                 vTaskDelay(100);
             }
-            if(time <= 5)
+            if(time <= KEY_SHORT_PRESS_MAX)
             {
                 return KEY_RIGHT_TOP;
             }
-            while(READ_RIGHT_TOP == 0);
+            /* 长按: 等待释放后返回 */
+            Inf_JoyStickAndKey_WaitRelease(KEY_RIGHT_TOP_GPIO_Port, KEY_RIGHT_TOP_Pin);
             return KEY_RIGHT_TOP_LONG;
         }
     }

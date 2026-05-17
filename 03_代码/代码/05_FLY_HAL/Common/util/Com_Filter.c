@@ -1,18 +1,18 @@
 #include "Com_Filter.h"
 
-#define ALPHA 0.8
-/* Ò»½×µÍÍ¨ÂÊ²¨ */
+#include "Com_FlightConfig.h"
+
 int16_t Com_Filter_LowPass(int16_t newData, int16_t lastData)
 {
-    return ALPHA * lastData + (1 - ALPHA) * newData;
+    return LP_FILTER_ALPHA * lastData + (1 - LP_FILTER_ALPHA) * newData;
 }
 
 
-/* ¿¨¶ûÂüÂË²¨²ÎÊý */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½ï¿½ï¿½ï¿½ï¿½ */
 KalmanFilter_Struct kfs[3] = {
-    {0.02, 0, 0, 0, 0.001, 0.543},
-    {0.02, 0, 0, 0, 0.001, 0.543},
-    {0.02, 0, 0, 0, 0.001, 0.543}};
+    {KF_INIT_Q, 0, 0, 0, KF_INIT_R, 0.543},
+    {KF_INIT_Q, 0, 0, 0, KF_INIT_R, 0.543},
+    {KF_INIT_Q, 0, 0, 0, KF_INIT_R, 0.543}};
 double Common_Filter_KalmanFilter(KalmanFilter_Struct *kf, double input)
 {
     kf->Now_P = kf->LastP + kf->Q;

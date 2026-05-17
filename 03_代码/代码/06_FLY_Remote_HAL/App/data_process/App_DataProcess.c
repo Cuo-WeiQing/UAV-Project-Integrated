@@ -1,7 +1,7 @@
 #include "App_DataProcess.h"
 
 /**
- * @description: Êı¾İ´¦ÀíÄ£¿éµÄÆô¶¯
+ * @description: æ•°æ®å¤„ç†æ¨¡å—å¯åŠ¨
  * @return {*}
  */
 void App_DataProcess_Start(void)
@@ -10,12 +10,12 @@ void App_DataProcess_Start(void)
 }
 
 /**
- * @description: ´¦ÀíÒ¡¸ËÊı¾İµÄ¼«ĞÔºÍ·¶Î§
+ * @description: è½¬æ¢æ‘‡æ†æ•°æ®çš„ææ€§å’ŒèŒƒå›´
  * @return {*}
  */
 static void App_DataProcess_JoyStickPolarityAndRange(void)
 {
-    /* 1. ´¦Àí¼«ĞÔ   [4095, 0]  => [0, 1000]
+    /* 1. åå‘ç”µå‹   [4095, 0]  => [0, 1000]
           (4095 -  [4095, 0]) / 4.095
           (4095 -  [4095, 0]) / (4095 / 1000)
           (4095 -  [4095, 0]) * 1000 / 4095
@@ -29,44 +29,70 @@ static void App_DataProcess_JoyStickPolarityAndRange(void)
 }
 
 /**
- * @description: ¶ÔÒ¡¸ËÊı¾İ×öĞ£×¼
+ * @description: æ‘‡æ†æ­»åŒºå¤„ç† (é˜²æ­¢ä¸­ä½æ¼‚ç§»å¯¼è‡´æ— äººæœºè¯¯åŠ¨)
+ * @return {*}
+ */
+static void App_DataProcess_JoyStickDeadzone(void)
+{
+    /* å¯¹PIT/ROL/YAWä¸‰ä¸ªæ–¹å‘åº”ç”¨ä¸­ä½æ­»åŒº */
+    if (abs(joyStick.PIT - JOYSTICK_MIDPOINT) <= JOYSTICK_DEADZONE)
+    {
+        joyStick.PIT = JOYSTICK_MIDPOINT;
+    }
+    if (abs(joyStick.ROL - JOYSTICK_MIDPOINT) <= JOYSTICK_DEADZONE)
+    {
+        joyStick.ROL = JOYSTICK_MIDPOINT;
+    }
+    if (abs(joyStick.YAW - JOYSTICK_MIDPOINT) <= JOYSTICK_DEADZONE)
+    {
+        joyStick.YAW = JOYSTICK_MIDPOINT;
+    }
+    /* THRæ–¹å‘: ä½äºæ­»åŒºçš„å€¼è§†ä¸º0 (é˜²æ­¢æ²¹é—¨ä¸­ä½è¯¯è§¦å‘) */
+    if (joyStick.THR <= JOYSTICK_THR_DEADZONE)
+    {
+        joyStick.THR = 0;
+    }
+}
+
+/**
+ * @description: å¯¹æ‘‡æ†æ•°æ®åšæ ¡å‡†
  * @return {*}
  */
 static void App_DataProcess_JoystickWithBias(void)
 {
-    /* µş¼ÓÆ«ÒÆÁ¿ */
+    /* å‡å»åç½®é‡ */
     joyStick.THR -= joyStickBias.THR;
     joyStick.PIT -= joyStickBias.PIT;
     joyStick.ROL -= joyStickBias.ROL;
     joyStick.YAW -= joyStickBias.YAW;
 
-    /* ¶ÔĞ£×¼ºóµÄÊı¾İ×öÏŞ·ù´¦Àí */
-    joyStick.THR = LIMIT(joyStick.THR, 0, 1000);
-    joyStick.PIT = LIMIT(joyStick.PIT, 0, 1000);
-    joyStick.ROL = LIMIT(joyStick.ROL, 0, 1000);
-    joyStick.YAW = LIMIT(joyStick.YAW, 0, 1000);
+    /* åœ¨æ ¡å‡†åé™åˆ¶è¾¹ç•ŒèŒƒå›´ */
+    joyStick.THR = LIMIT(joyStick.THR, JOYSTICK_RANGE_MIN, JOYSTICK_RANGE_MAX);
+    joyStick.PIT = LIMIT(joyStick.PIT, JOYSTICK_RANGE_MIN, JOYSTICK_RANGE_MAX);
+    joyStick.ROL = LIMIT(joyStick.ROL, JOYSTICK_RANGE_MIN, JOYSTICK_RANGE_MAX);
+    joyStick.YAW = LIMIT(joyStick.YAW, JOYSTICK_RANGE_MIN, JOYSTICK_RANGE_MAX);
 }
 
 /**
- * @description: ´¦ÀíÒ¡¸ËÊı¾İ
+ * @description: å¤„ç†æ‘‡æ†æ•°æ® (å®Œæ•´æµç¨‹)
  * @return {*}
  */
 void App_DataProcess_JoyStickDataProcess(void)
 {
     taskENTER_CRITICAL();
-    /* 1. É¨ÃèÒ¡¸Ë */
+    /* 1. æ‰«ææ‘‡æ† */
     Inf_JoyStickAndKey_JoyStickScan();
-    /* 2. ¼«ĞÔºÍ·¶Î§´¦Àí */
+    /* 2. ææ€§å’ŒèŒƒå›´è½¬æ¢ */
     App_DataProcess_JoyStickPolarityAndRange();
-    /* 3. ¶ÔÒ¡¸ËÊı¾İ×öÊı¾İĞ£×¼ */
+    /* 3. å¯¹æ‘‡æ†æ•°æ®è¿›è¡Œåå·®æ ¡å‡† */
     App_DataProcess_JoystickWithBias();
+    /* 4. æ‘‡æ†æ­»åŒºå¤„ç† (é˜²ä¸­ä½æ¼‚ç§») */
+    App_DataProcess_JoyStickDeadzone();
     taskEXIT_CRITICAL();
-
-    // Com_Config_PrintJoyStick("2");
 }
 
 /**
- * @description: ¼ÆËãÒ¡¸ËµÄÆ«ÒÆÁ¿
+ * @description: è®¡ç®—æ‘‡æ†çš„åç½®é‡
  * @return {*}
  */
 static void App_DataProcess_JoyStickCaclBias(void)
@@ -76,26 +102,27 @@ static void App_DataProcess_JoyStickCaclBias(void)
     joyStickBias.YAW = 0;
     joyStickBias.PIT = 0;
 
-    for(uint8_t i = 0; i < 100; i++)
+    for(uint8_t i = 0; i < JOYSTICK_BIAS_SAMPLES; i++)
     {
         Inf_JoyStickAndKey_JoyStickScan();
         App_DataProcess_JoyStickPolarityAndRange();
-        joyStickBias.THR += (joyStick.THR - 0);   /* 0ÖµĞ£×¼ */
-        joyStickBias.PIT += (joyStick.PIT - 500); /* ÖĞÖµĞ£×¼ */
-        joyStickBias.YAW += (joyStick.YAW - 500);
-        joyStickBias.ROL += (joyStick.ROL - 500);
-        vTaskDelay(10);
+        joyStickBias.THR += (joyStick.THR - 0);   /* 0å€¼æ ¡å‡† */
+        joyStickBias.PIT += (joyStick.PIT - JOYSTICK_MIDPOINT); /* ä¸­å€¼æ ¡å‡† */
+        joyStickBias.YAW += (joyStick.YAW - JOYSTICK_MIDPOINT);
+        joyStickBias.ROL += (joyStick.ROL - JOYSTICK_MIDPOINT);
+        vTaskDelay(KEY_DEBOUNCE_MS / 3); /* çº¦10msé—´éš” */
     }
 
-    joyStickBias.THR /= 100;
-    joyStickBias.PIT /= 100;
-    joyStickBias.ROL /= 100;
-    joyStickBias.YAW /= 100;
-    // Com_Config_PrintJoyStickBias("bias 2");
+    joyStickBias.THR /= JOYSTICK_BIAS_SAMPLES;
+    joyStickBias.PIT /= JOYSTICK_BIAS_SAMPLES;
+    joyStickBias.ROL /= JOYSTICK_BIAS_SAMPLES;
+    joyStickBias.YAW /= JOYSTICK_BIAS_SAMPLES;
 }
 
 /**
- * @description: °´¼üµÄ´¦Àí
+ * @description: æŒ‰é”®çš„å¤„ç†
+ *  æŒ‰é”®æ‰«æåº•å±‚å·²æœ‰30msè½¯ä»¶é˜²æŠ– (vTaskDelay(30)),
+ *  æ­¤å¤„ä¸ºä¸Šå±‚æŒ‰é”®åŠŸèƒ½åˆ†å‘é€»è¾‘ã€‚
  * @return {*}
  */
 void App_DataProcess_KeyDataProcess(void)
@@ -105,7 +132,7 @@ void App_DataProcess_KeyDataProcess(void)
     {
         case KEY_RIGHT_TOP_LONG:
         {
-            /* ÔÚ×öĞ£×¼µÄÊ±ºò, Ò¡¸Ë´¦ÀíÈÎÎñ²»½øĞĞ´¦Àí */
+            /* æ ¡å‡†æ—¶æš‚åœ, æ‘‡æ†æ•°æ®æš‚ä¸è¿›è¡Œå¤„ç† */
             taskENTER_CRITICAL();
             App_DataProcess_JoyStickCaclBias();
             taskEXIT_CRITICAL();
@@ -113,17 +140,16 @@ void App_DataProcess_KeyDataProcess(void)
         }
         case KEY_LEFT_TOP:
         {
-            debug_printfln("1");
             joyStick.isPowerDown = 1;
             break;
         }
         case KEY_RIGHT_TOP:
         {
-            /* ¶¨¸ß */
+            /* å®šé«˜ */
             joyStick.isFixHeight = 1;
             break;
         }
-        /* Î¢µ÷°´Å¥ */
+        /* å¾®è°ƒæŒ‰é’® */
         case KEY_LEFT:
         {
             joyStickBias.ROL += 10;
@@ -149,4 +175,3 @@ void App_DataProcess_KeyDataProcess(void)
             break;
     }
 }
-
